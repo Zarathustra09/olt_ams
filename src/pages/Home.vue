@@ -87,7 +87,7 @@ const distribution = [
       <!-- Header -->
       <div class="header">
         <div class="header-left">
-          <h1 class="page-title">OEE</h1>
+          <h1 class="page-title">MachTrax System</h1>
           <Tabs v-model="selectedTab">
             <TabsList>
               <TabsTrigger v-for="tab in tabs" :key="tab" :value="tab">
