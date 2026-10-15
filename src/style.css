@@ -39,6 +39,11 @@
   --color-status-offline: var(--status-offline);
   --color-status-planned: var(--status-planned);
   --color-status-microstop: var(--status-microstop);
+  --color-cat-1: var(--cat-1);
+  --color-cat-2: var(--cat-2);
+  --color-cat-3: var(--cat-3);
+  --color-cat-4: var(--cat-4);
+  --color-cat-5: var(--cat-5);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -90,6 +95,12 @@
   --status-offline: oklch(0.6 0.22 25);
   --status-planned: oklch(0.62 0.15 255);
   --status-microstop: oklch(0.55 0.02 150);
+  /* Categorical data-viz slots (validated order; do not reorder) */
+  --cat-1: #2a78d6;
+  --cat-2: #eb6834;
+  --cat-3: #1baf7a;
+  --cat-4: #eda100;
+  --cat-5: #e87ba4;
 }
 
 .dark {
@@ -132,6 +143,12 @@
   --status-offline: oklch(0.7 0.19 22);
   --status-planned: oklch(0.72 0.13 255);
   --status-microstop: oklch(0.7 0.03 150);
+  /* Categorical data-viz slots (validated order; do not reorder) */
+  --cat-1: #3987e5;
+  --cat-2: #d95926;
+  --cat-3: #199e70;
+  --cat-4: #c98500;
+  --cat-5: #d55181;
 }
 
 @layer base {

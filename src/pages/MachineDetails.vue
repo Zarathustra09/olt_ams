@@ -9,6 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
 import { useLiveSimulation } from '@/composables/useLiveSimulation'
+import ErrorAnalysis from '@/components/dashboard/ErrorAnalysis.vue'
+import ErrorLog from '@/components/dashboard/ErrorLog.vue'
+import LiveIndicator from '@/components/dashboard/LiveIndicator.vue'
+import SubAssetAnalysis from '@/components/dashboard/SubAssetAnalysis.vue'
 import { MACHINE_STATUS } from '@/lib/machine-status'
 import type { ChartConfig } from '@/components/ui/chart'
 import {
@@ -148,14 +152,6 @@ const oeeTrendConfig = {
   },
 } satisfies ChartConfig
 
-const recentEvents = ref([
-  { time: '2 hours ago', event: 'Production started', type: 'info' },
-  { time: '3 hours ago', event: 'Tool change completed', type: 'success' },
-  { time: '4 hours ago', event: 'Minor slowdown detected', type: 'warning' },
-  { time: '5 hours ago', event: 'Quality check passed', type: 'success' },
-  { time: '6 hours ago', event: 'Shift change', type: 'info' },
-])
-
 const maintenanceHistory = ref([
   { date: '2024-03-10', type: 'Scheduled Maintenance', technician: 'John Smith', duration: '2 hours', status: 'Completed' },
   { date: '2024-02-25', type: 'Emergency Repair', technician: 'Sarah Davis', duration: '4 hours', status: 'Completed' },
@@ -176,15 +172,6 @@ const getStatusColor = (status: string) => {
   }
 }
 
-const getEventTypeColor = (type: string) => {
-  switch (type) {
-    case 'success': return 'bg-success'
-    case 'warning': return 'bg-warning'
-    case 'error': return 'bg-danger'
-    default: return 'bg-status-planned'
-  }
-}
-
 const totalDowntime = computed(() => downtimeReasons.value.reduce((acc, curr) => acc + curr.minutes, 0))
 
 type OeeTrendData = (typeof oeeTrendData.value)[number]
@@ -196,7 +183,7 @@ type HourlyProductionData = (typeof hourlyProduction.value)[number]
   <AppLayout>
     <div class="space-y-6">
       <!-- Header -->
-      <div class="flex items-center gap-4">
+      <div class="flex flex-wrap items-center gap-4">
         <Button variant="ghost" size="icon" @click="goBack">
           <ArrowLeft class="h-4 w-4" />
         </Button>
@@ -207,6 +194,7 @@ type HourlyProductionData = (typeof hourlyProduction.value)[number]
         <Badge :class="getStatusColor(machine.status)">
           {{ MACHINE_STATUS[machine.status].label.toUpperCase() }}
         </Badge>
+        <LiveIndicator />
         <Button variant="outline">Export Report</Button>
         <Button>Schedule Maintenance</Button>
       </div>
@@ -234,14 +222,18 @@ type HourlyProductionData = (typeof hourlyProduction.value)[number]
 
       <!-- Detailed Information Tabs -->
       <Tabs default-value="overview" class="space-y-4">
+        <div class="overflow-x-auto">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="production">Production</TabsTrigger>
           <TabsTrigger value="downtime">Downtime</TabsTrigger>
+          <TabsTrigger value="errors">Error analysis</TabsTrigger>
+          <TabsTrigger value="assets">Sub-assets</TabsTrigger>
           <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
           <TabsTrigger value="events">Events</TabsTrigger>
         </TabsList>
+        </div>
 
         <TabsContent value="overview" class="space-y-4">
           <div class="grid gap-4 md:grid-cols-2">
@@ -491,7 +483,7 @@ type HourlyProductionData = (typeof hourlyProduction.value)[number]
                   {{ Math.round(performanceData.reduce((sum, d) => sum + d.oee, 0) / performanceData.length) }}%
                 </div>
                 <p class="text-xs text-muted-foreground mt-1">
-                  <span class="text-green-500">+2.3%</span> from last week
+                  <span class="text-success">+2.3%</span> from last week
                 </p>
               </CardContent>
             </Card>
@@ -671,22 +663,22 @@ type HourlyProductionData = (typeof hourlyProduction.value)[number]
           </Card>
         </TabsContent>
 
+        <TabsContent value="errors">
+          <ErrorAnalysis :machine-id="machine.id" />
+        </TabsContent>
+
+        <TabsContent value="assets">
+          <SubAssetAnalysis :machine-id="machine.id" />
+        </TabsContent>
+
         <TabsContent value="events" class="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Recent Events</CardTitle>
-              <CardDescription>Activity log and notifications</CardDescription>
+              <CardDescription>Live stop and error log for this machine</CardDescription>
             </CardHeader>
             <CardContent>
-              <div class="space-y-4">
-                <div v-for="(event, index) in recentEvents" :key="index" class="flex items-start gap-4">
-                  <div :class="['w-2 h-2 mt-2 rounded-full', getEventTypeColor(event.type)]"></div>
-                  <div class="flex-1">
-                    <p class="text-sm font-medium">{{ event.event }}</p>
-                    <p class="text-xs text-muted-foreground">{{ event.time }}</p>
-                  </div>
-                </div>
-              </div>
+              <ErrorLog :machine-id="machine.id" :limit="12" />
             </CardContent>
           </Card>
         </TabsContent>

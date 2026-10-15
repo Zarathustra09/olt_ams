@@ -42,3 +42,14 @@ export const formatShiftTime = (minutesIntoShift: number, startHour = 6) => {
   const m = total % 60
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
+
+export type HealthLevel = 'healthy' | 'watch' | 'critical'
+
+export const getHealthLevel = (health: number): HealthLevel =>
+  health >= 85 ? 'healthy' : health >= 65 ? 'watch' : 'critical'
+
+export const HEALTH_LEVELS: Record<HealthLevel, { label: string; tone: Tone }> = {
+  healthy: { label: 'Healthy', tone: 'success' },
+  watch: { label: 'Watch', tone: 'warning' },
+  critical: { label: 'Critical', tone: 'danger' },
+}

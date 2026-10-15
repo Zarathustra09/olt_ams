@@ -12,12 +12,16 @@ const props = withDefaults(
     decimals?: number
     suffix?: string
     hint?: string
+    /** Overrides decimals/suffix formatting, e.g. for durations. */
+    format?: (value: number) => string
   }>(),
   { decimals: 0, suffix: '' },
 )
 
 const animated = useAnimatedNumber(() => props.value)
-const display = computed(() => animated.value.toFixed(props.decimals))
+const display = computed(() =>
+  props.format ? props.format(animated.value) : `${animated.value.toFixed(props.decimals)}${props.suffix}`,
+)
 </script>
 
 <template>
@@ -27,7 +31,7 @@ const display = computed(() => animated.value.toFixed(props.decimals))
       <component :is="icon" class="size-4 text-muted-foreground" />
     </CardHeader>
     <CardContent>
-      <div class="text-2xl font-bold tabular-nums">{{ display }}{{ suffix }}</div>
+      <div class="text-2xl font-bold tabular-nums">{{ display }}</div>
       <p v-if="hint" class="mt-1 text-xs text-muted-foreground">{{ hint }}</p>
     </CardContent>
   </Card>

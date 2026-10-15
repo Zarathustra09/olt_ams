@@ -1,6 +1,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useIntervalFn } from '@vueuse/core'
 import { MACHINES, type Machine } from '@/data/machines'
+import { createErrorEvent, createErrorHistory, createSubAssets, type ErrorEvent, type SubAsset } from '@/data/analysis'
 import { SHIFT_STATE_ORDER, type ShiftState } from '@/lib/machine-status'
 
 const TICK_MS = 2500
@@ -40,6 +41,11 @@ const plantHistory = reactive({
   performance: [] as number[],
   quality: [] as number[],
 })
+
+const subAssets = reactive<SubAsset[]>(createSubAssets())
+const subAssetBases = new Map(subAssets.map((a) => [a.id, { ...a }]))
+const errors = reactive<ErrorEvent[]>([])
+const MAX_ERRORS = 600
 
 const live = computed(() => machines.filter((m) => m.status !== 'offline'))
 const avg = (pick: (m: LiveMachine) => number) =>
@@ -87,6 +93,7 @@ const advanceTimeline = () => {
   if (nowMinute.value >= SHIFT_MINUTES) {
     timeline.value = [{ state: 'running', start: 0, end: 0 }]
     nowMinute.value = 0
+    errors.splice(0)
   }
   nowMinute.value = Math.min(SHIFT_MINUTES, nowMinute.value + MINUTES_PER_TICK)
   const last = timeline.value[timeline.value.length - 1]!
@@ -130,11 +137,30 @@ const step = (record = true) => {
     if (plantHistory[key].length > HISTORY_POINTS) plantHistory[key].shift()
   }
 
+  for (const a of subAssets) {
+    const base = subAssetBases.get(a.id)!
+    if (bases.get(a.machineId)!.status !== 'offline') {
+      a.temperature = round1(walk(a.temperature, base.temperature, 1.6, base.temperature - 8, base.temperature + 12))
+      a.vibration = Math.round(walk(a.vibration, base.vibration, base.vibration * 0.18, 0, 12) * 100) / 100
+      a.health = round1(walk(a.health, base.health, 0.6, base.health - 4, Math.min(100, base.health + 2)))
+    }
+    a.tempHistory.push(a.temperature)
+    a.vibHistory.push(a.vibration)
+    if (a.tempHistory.length > HISTORY_POINTS) a.tempHistory.shift()
+    if (a.vibHistory.length > HISTORY_POINTS) a.vibHistory.shift()
+  }
+
   mttr.value = Math.round(walk(mttr.value, 1080, 90, 600, 1800))
   mtbf.value = Math.round(walk(mtbf.value, 8951, 400, 6000, 12000))
 
   if (record) {
     advanceTimeline()
+    if (Math.random() < 0.35) {
+      const candidates = machines.filter((m) => m.status !== 'offline')
+      const m = candidates[Math.floor(Math.random() * candidates.length)]!
+      errors.push(createErrorEvent(Math.random, m.id, subAssets.filter((a) => a.machineId === m.id), nowMinute.value))
+      if (errors.length > MAX_ERRORS) errors.shift()
+    }
     lastUpdated.value = Date.now()
   }
 }
@@ -149,6 +175,7 @@ const init = () => {
   if (initialised) return
   initialised = true
   seedTimeline()
+  errors.push(...createErrorHistory(subAssets, nowMinute.value))
   // Pre-fill history so sparklines and trend charts are populated on first paint.
   const now = Date.now()
   for (let i = HISTORY_POINTS; i > 0; i--) {
@@ -190,6 +217,8 @@ export function useLiveSimulation() {
     distribution,
     nowMinute,
     shiftMinutes: SHIFT_MINUTES,
+    subAssets,
+    errors,
     lastUpdated,
     isLive,
     toggle,

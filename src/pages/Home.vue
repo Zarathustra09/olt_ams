@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useDateFormat, useNow } from '@vueuse/core'
-import { Clock, Construction, Pencil, RefreshCw, Timer, TrendingDown, TrendingUp } from 'lucide-vue-next'
+import { Clock, Pencil, RefreshCw, Timer, TrendingDown, TrendingUp } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
+import ErrorAnalysis from '@/components/dashboard/ErrorAnalysis.vue'
+import SubAssetAnalysis from '@/components/dashboard/SubAssetAnalysis.vue'
 import OeeGauge from '@/components/dashboard/OeeGauge.vue'
 import LiveIndicator from '@/components/dashboard/LiveIndicator.vue'
 import TimelineBar from '@/components/dashboard/TimelineBar.vue'
@@ -221,18 +223,12 @@ const rowSegments = (state: string) => sim.timeline.value.filter((s) => s.state 
           </Card>
         </TabsContent>
 
-        <TabsContent v-for="tab in tabs.slice(1)" :key="tab.value" :value="tab.value">
-          <Card>
-            <CardContent class="flex flex-col items-center gap-3 py-16 text-center">
-              <div class="flex size-12 items-center justify-center rounded-full bg-muted">
-                <Construction class="size-6 text-muted-foreground" />
-              </div>
-              <div class="text-lg font-semibold">{{ tab.label }}</div>
-              <p class="max-w-md text-sm text-muted-foreground">
-                This view is part of the next release. It will break stops down by reason and by sub-asset.
-              </p>
-            </CardContent>
-          </Card>
+        <TabsContent value="errors">
+          <ErrorAnalysis />
+        </TabsContent>
+
+        <TabsContent value="assets">
+          <SubAssetAnalysis />
         </TabsContent>
       </Tabs>
     </div>
