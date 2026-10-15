@@ -1,4 +1,4 @@
-export type MachineStatus = 'running' | 'idle' | 'offline'
+export type MachineStatus = 'running' | 'idle' | 'fault' | 'offline'
 
 export interface Machine {
   id: number

@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
 import { useLiveSimulation } from '@/composables/useLiveSimulation'
+import AiInsights from '@/components/dashboard/AiInsights.vue'
+import CostStrip from '@/components/dashboard/CostStrip.vue'
 import ErrorAnalysis from '@/components/dashboard/ErrorAnalysis.vue'
 import ErrorLog from '@/components/dashboard/ErrorLog.vue'
 import LiveIndicator from '@/components/dashboard/LiveIndicator.vue'
@@ -163,10 +165,13 @@ const goBack = () => {
   router.push('/machines')
 }
 
+const openReport = () => window.open(router.resolve({ path: '/report', query: { machine: machine.value.id } }).href, '_blank')
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'running': return 'border-status-running/40 bg-status-running/15 text-foreground'
     case 'idle': return 'border-status-idle/40 bg-status-idle/15 text-foreground'
+    case 'fault': return 'border-status-offline/60 bg-status-offline/20 text-foreground'
     case 'offline': return 'border-status-offline/40 bg-status-offline/15 text-foreground'
     default: return 'bg-muted text-muted-foreground'
   }
@@ -195,9 +200,11 @@ type HourlyProductionData = (typeof hourlyProduction.value)[number]
           {{ MACHINE_STATUS[machine.status].label.toUpperCase() }}
         </Badge>
         <LiveIndicator />
-        <Button variant="outline">Export Report</Button>
+        <Button variant="outline" @click="openReport">Export Report</Button>
         <Button>Schedule Maintenance</Button>
       </div>
+
+      <CostStrip :machine-id="machine.id" />
 
       <!-- Real-time Metrics -->
       <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -236,6 +243,8 @@ type HourlyProductionData = (typeof hourlyProduction.value)[number]
         </div>
 
         <TabsContent value="overview" class="space-y-4">
+          <AiInsights :machine-id="machine.id" />
+
           <div class="grid gap-4 md:grid-cols-2">
             <!-- Machine Information -->
             <Card>

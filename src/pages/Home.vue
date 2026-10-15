@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useDateFormat, useNow } from '@vueuse/core'
-import { Clock, Pencil, RefreshCw, Timer, TrendingDown, TrendingUp } from 'lucide-vue-next'
+import { Clock, FileText, Pencil, RefreshCw, Timer, TrendingDown, TrendingUp } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
+import AiInsights from '@/components/dashboard/AiInsights.vue'
+import CostStrip from '@/components/dashboard/CostStrip.vue'
 import ErrorAnalysis from '@/components/dashboard/ErrorAnalysis.vue'
 import SubAssetAnalysis from '@/components/dashboard/SubAssetAnalysis.vue'
 import OeeGauge from '@/components/dashboard/OeeGauge.vue'
@@ -18,6 +21,9 @@ import { useLiveSimulation } from '@/composables/useLiveSimulation'
 import { SHIFT_STATES, SHIFT_STATE_ORDER, formatDuration, formatShiftTime } from '@/lib/machine-status'
 
 const sim = useLiveSimulation()
+const router = useRouter()
+
+const openReport = () => window.open(router.resolve('/report').href, '_blank')
 
 const selectedTab = ref('overview')
 const tabs = [
@@ -97,8 +103,13 @@ const rowSegments = (state: string) => sim.timeline.value.filter((s) => s.state 
             <Clock />
             {{ clock }}
           </Badge>
+          <Button variant="outline" size="sm" @click="openReport">
+            <FileText class="size-4" /> Shift report
+          </Button>
         </div>
       </div>
+
+      <CostStrip />
 
       <Tabs v-model="selectedTab" class="space-y-4">
         <TabsList>
@@ -153,6 +164,8 @@ const rowSegments = (state: string) => sim.timeline.value.filter((s) => s.state 
               </div>
             </CardContent>
           </Card>
+
+          <AiInsights />
 
           <Card>
             <CardHeader class="flex flex-row items-center justify-between space-y-0">

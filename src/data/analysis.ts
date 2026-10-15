@@ -49,6 +49,7 @@ export const ERROR_REASONS: ErrorReason[] = [
   { code: 'M102', reason: 'Tool breakage', category: 'mechanical' },
   { code: 'M103', reason: 'Coolant level low', category: 'mechanical' },
   { code: 'M104', reason: 'Jam / blockage', category: 'mechanical' },
+  { code: 'M105', reason: 'Hydraulic pressure loss', category: 'mechanical' },
   { code: 'E201', reason: 'Servo drive fault', category: 'electrical' },
   { code: 'E202', reason: 'Sensor misread', category: 'electrical' },
   { code: 'E203', reason: 'Emergency stop triggered', category: 'electrical' },

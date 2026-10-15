@@ -9,14 +9,17 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useLiveSimulation } from '@/composables/useLiveSimulation'
+import { formatPesoCompact } from '@/data/finance'
 import { MACHINE_STATUS, TONE_CLASSES, getOeeTone } from '@/lib/machine-status'
 
 const router = useRouter()
-const { machines, plant } = useLiveSimulation()
+const { machines, plant, costByMachine } = useLiveSimulation()
+const costById = computed(() => new Map(costByMachine.value.map((c) => [c.machineId, c.cost])))
 
 const runningCount = computed(() => machines.filter((m) => m.status === 'running').length)
 const partsToday = computed(() => machines.reduce((sum, m) => sum + m.partsToday, 0))
 const alertCount = computed(() => machines.filter((m) => m.status !== 'running').length)
+const faultCount = computed(() => machines.filter((m) => m.status === 'fault').length)
 
 const viewDetails = (id: number) => router.push(`/machines/${id}`)
 const viewSettings = (id: number) => router.push(`/machines/${id}/settings`)
@@ -40,11 +43,21 @@ const viewSettings = (id: number) => router.push(`/machines/${id}/settings`)
         <StatTile label="Machines running" :value="runningCount" :icon="Activity" :hint="`of ${machines.length} machines`" />
         <StatTile label="Average OEE" :value="plant.oee" :icon="Gauge" :decimals="1" suffix="%" hint="Across active machines" />
         <StatTile label="Parts produced today" :value="partsToday" :icon="Package" hint="All machines combined" />
-        <StatTile label="Needs attention" :value="alertCount" :icon="AlertTriangle" hint="Idle or offline machines" />
+        <StatTile
+          label="Needs attention"
+          :value="alertCount"
+          :icon="AlertTriangle"
+          :hint="faultCount ? `${faultCount} in fault right now` : 'Idle or offline machines'"
+        />
       </div>
 
       <div class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-        <Card v-for="machine in machines" :key="machine.id" class="transition-shadow hover:shadow-lg">
+        <Card
+          v-for="machine in machines"
+          :key="machine.id"
+          class="transition-all hover:-translate-y-0.5 hover:shadow-lg"
+          :class="machine.status === 'fault' && 'border-danger ring-2 ring-danger/50'"
+        >
           <CardHeader class="flex flex-row justify-between gap-4">
             <div>
               <CardTitle class="text-lg">{{ machine.name }}</CardTitle>
@@ -53,7 +66,7 @@ const viewSettings = (id: number) => router.push(`/machines/${id}/settings`)
             <Badge variant="outline" class="gap-1.5">
               <span class="relative flex size-2">
                 <span
-                  v-if="machine.status === 'running'"
+                  v-if="machine.status === 'running' || machine.status === 'fault'"
                   class="absolute inline-flex size-full animate-ping rounded-full opacity-75 motion-reduce:animate-none"
                   :class="MACHINE_STATUS[machine.status].dot"
                 />
@@ -76,6 +89,11 @@ const viewSettings = (id: number) => router.push(`/machines/${id}/settings`)
                   :style="{ width: `${machine.oee}%` }"
                 />
               </div>
+            </div>
+
+            <div class="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-xs">
+              <span class="text-muted-foreground">Downtime cost today</span>
+              <span class="font-semibold tabular-nums">{{ formatPesoCompact(costById.get(machine.id) ?? 0) }}</span>
             </div>
 
             <div class="grid grid-cols-3 gap-2 pt-2">

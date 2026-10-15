@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useLiveSimulation } from '@/composables/useLiveSimulation'
 import { ERROR_CATEGORIES, ERROR_CATEGORY_ORDER, REASON_BY_CODE, type ErrorCategory } from '@/data/analysis'
+import { FINANCE, formatPesoCompact } from '@/data/finance'
 import { formatDuration, formatShiftTime } from '@/lib/machine-status'
 
 const props = defineProps<{ machineId?: number }>()
@@ -19,16 +20,20 @@ const events = computed(() =>
   props.machineId ? sim.errors.filter((e) => e.machineId === props.machineId) : sim.errors,
 )
 const totalSeconds = computed(() => events.value.reduce((sum, e) => sum + e.durationSec, 0))
+const totalCost = computed(() =>
+  events.value.reduce((sum, e) => sum + (e.durationSec / 3600) * FINANCE[e.machineId]!.hourlyValue, 0),
+)
 const mttr = computed(() => (events.value.length ? totalSeconds.value / events.value.length : 0))
 const pct = (seconds: number) => (totalSeconds.value ? (seconds / totalSeconds.value) * 100 : 0)
 
 // Pareto of stop reasons by downtime; the long tail folds into "Other".
 const pareto = computed(() => {
-  const groups = new Map<string, { count: number; seconds: number }>()
+  const groups = new Map<string, { count: number; seconds: number; cost: number }>()
   for (const e of events.value) {
-    const g = groups.get(e.code) ?? { count: 0, seconds: 0 }
+    const g = groups.get(e.code) ?? { count: 0, seconds: 0, cost: 0 }
     g.count++
     g.seconds += e.durationSec
+    g.cost += (e.durationSec / 3600) * FINANCE[e.machineId]!.hourlyValue
     groups.set(e.code, g)
   }
   const sorted = [...groups.entries()]
@@ -43,6 +48,7 @@ const pareto = computed(() => {
       category: null,
       count: rest.reduce((s, r) => s + r.count, 0),
       seconds: rest.reduce((s, r) => s + r.seconds, 0),
+      cost: rest.reduce((s, r) => s + r.cost, 0),
     })
   }
   let cumulative = 0
@@ -93,7 +99,13 @@ const breakdownMax = computed(() => Math.max(1, ...breakdown.value.map((r) => r.
   <div class="space-y-6">
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatTile label="Stops this shift" :value="events.length" :icon="AlertTriangle" hint="Errors that halted production" />
-      <StatTile label="Error downtime" :value="totalSeconds" :icon="Clock3" :format="formatDuration" hint="Total time lost to errors" />
+      <StatTile
+        label="Error downtime"
+        :value="totalSeconds"
+        :icon="Clock3"
+        :format="formatDuration"
+        :hint="`About ${formatPesoCompact(totalCost)} of lost value`"
+      />
       <StatTile label="Mean time to repair" :value="mttr" :icon="Wrench" :format="formatDuration" hint="Average stop duration" />
       <Card>
         <CardHeader class="pb-2">
@@ -120,13 +132,13 @@ const breakdownMax = computed(() => Math.max(1, ...breakdown.value.map((r) => r.
               <span class="size-2.5 rounded-sm" :class="ERROR_CATEGORIES[c].bg" />{{ ERROR_CATEGORIES[c].label }}
             </span>
           </div>
-          <div class="grid grid-cols-[minmax(0,11rem)_1fr_4.5rem_3rem] gap-x-3 text-xs font-medium text-muted-foreground">
-            <span>Reason</span><span /><span class="text-right">Downtime</span><span class="text-right">Cum.</span>
+          <div class="grid grid-cols-[minmax(0,11rem)_1fr_4.5rem_4.5rem_3rem] gap-x-3 text-xs font-medium text-muted-foreground">
+            <span>Reason</span><span /><span class="text-right">Downtime</span><span class="text-right">Cost</span><span class="text-right">Cum.</span>
           </div>
           <div class="space-y-1">
             <Tooltip v-for="row in pareto" :key="row.code || 'other'">
               <TooltipTrigger as-child>
-                <div class="grid grid-cols-[minmax(0,11rem)_1fr_4.5rem_3rem] items-center gap-x-3 rounded-md py-1 text-sm hover:bg-muted/60">
+                <div class="grid grid-cols-[minmax(0,11rem)_1fr_4.5rem_4.5rem_3rem] items-center gap-x-3 rounded-md py-1 text-sm hover:bg-muted/60">
                   <span class="truncate">
                     <span v-if="row.code" class="mr-1 font-mono text-xs text-muted-foreground">{{ row.code }}</span>{{ row.reason }}
                   </span>
@@ -138,6 +150,7 @@ const breakdownMax = computed(() => Math.max(1, ...breakdown.value.map((r) => r.
                     />
                   </div>
                   <span class="text-right tabular-nums">{{ formatDuration(row.seconds) }}</span>
+                  <span class="text-right tabular-nums">{{ formatPesoCompact(row.cost) }}</span>
                   <span class="text-right tabular-nums text-muted-foreground">{{ row.cumulative.toFixed(0) }}%</span>
                 </div>
               </TooltipTrigger>

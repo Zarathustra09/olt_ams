@@ -6,6 +6,7 @@ export type Tone = 'success' | 'warning' | 'danger'
 export const MACHINE_STATUS: Record<MachineStatus, { label: string; dot: string }> = {
   running: { label: 'Running', dot: 'bg-status-running' },
   idle: { label: 'Idle', dot: 'bg-status-idle' },
+  fault: { label: 'Fault', dot: 'bg-status-offline' },
   offline: { label: 'Offline', dot: 'bg-status-offline' },
 }
 

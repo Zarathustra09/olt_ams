@@ -1,7 +1,14 @@
 <!-- src/layouts/AppLayout.vue -->
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useDark } from '@vueuse/core'
+import NotificationBell from '@/components/dashboard/NotificationBell.vue'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useFirstLoad } from '@/composables/useFirstLoad'
 import {
   Sidebar,
   SidebarContent,
@@ -36,13 +43,16 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { Separator } from '@/components/ui/separator'
-import { GalleryVerticalEnd, Home, Cpu, BarChart3, User, Settings, Moon, Sun, ChevronUp, LogOut, Bell, ScrollText, Users, ShieldCheck } from 'lucide-vue-next'
+import { Factory, Home, Cpu, BarChart3, User, Settings, Moon, Sun, ChevronUp, LogOut, Bell, ScrollText, Users, ShieldCheck, Map as MapIcon, Tv } from 'lucide-vue-next'
 import { RouterLink } from 'vue-router'
 import logoBlack from '@/assets/images/logo-black.png'
 import logoWhite from '@/assets/images/logo-white.png'
 
-const isDarkMode = ref(false)
+// Persisted by vueuse and kept in sync with the <html> class.
+const isDarkMode = useDark({ initialValue: 'light' })
 const route = useRoute()
+const router = useRouter()
+const ready = useFirstLoad()
 
 const user = {
   name: 'John Doe',
@@ -86,7 +96,6 @@ const isActiveRoute = (path: string) => {
 
 const toggleTheme = () => {
   isDarkMode.value = !isDarkMode.value
-  document.documentElement.classList.toggle('dark')
 }
 
 const currentLogo = computed(() => isDarkMode.value ? logoWhite : logoBlack)
@@ -132,10 +141,26 @@ const currentLogo = computed(() => isDarkMode.value ? logoWhite : logoBlack)
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
+                <SidebarMenuButton as-child :isActive="isActiveRoute('/floor')">
+                  <RouterLink to="/floor">
+                    <MapIcon class="size-4" />
+                    <span>Plant floor</span>
+                  </RouterLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
                 <SidebarMenuButton as-child :isActive="isActiveRoute('/analytics')">
                   <RouterLink to="/analytics">
                     <BarChart3 class="size-4" />
                     <span>Analytics</span>
+                  </RouterLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton as-child :isActive="isActiveRoute('/wall')">
+                  <RouterLink to="/wall">
+                    <Tv class="size-4" />
+                    <span>Wall display</span>
                   </RouterLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -266,9 +291,36 @@ const currentLogo = computed(() => isDarkMode.value ? logoWhite : logoBlack)
             </BreadcrumbList>
           </Breadcrumb>
         </div>
+        <div class="ml-auto flex items-center gap-1 px-4">
+          <Badge variant="outline" class="mr-2 hidden gap-1.5 md:inline-flex">
+            <Factory class="size-3.5" /> Plant 01 · Day shift
+          </Badge>
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <Button variant="ghost" size="icon" class="size-9" aria-label="Open wall display" @click="router.push('/wall')">
+                <Tv class="size-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Wall display</TooltipContent>
+          </Tooltip>
+          <NotificationBell />
+        </div>
       </header>
       <div class="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <slot />
+        <div v-if="!ready" class="space-y-6" aria-busy="true" aria-label="Loading">
+          <div class="space-y-2">
+            <Skeleton class="h-8 w-64" />
+            <Skeleton class="h-4 w-96 max-w-full" />
+          </div>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Skeleton v-for="n in 4" :key="n" class="h-64 rounded-xl" />
+          </div>
+          <Skeleton class="h-40 rounded-xl" />
+          <Skeleton class="h-64 rounded-xl" />
+        </div>
+        <div v-else class="animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <slot />
+        </div>
       </div>
     </SidebarInset>
   </SidebarProvider>
