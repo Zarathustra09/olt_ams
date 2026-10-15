@@ -8,45 +8,33 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
+import { useLiveSimulation } from '@/composables/useLiveSimulation'
+import { MACHINE_STATUS } from '@/lib/machine-status'
 import type { ChartConfig } from '@/components/ui/chart'
 import {
   ChartContainer,
   ChartTooltip,
-  ChartTooltipContent,
-  ChartCrosshair,
-  componentToString,
 } from '@/components/ui/chart'
-import { ArrowLeft, Activity, AlertTriangle, CheckCircle2, Clock, Zap, TrendingUp, TrendingDown } from 'lucide-vue-next'
+import { ArrowLeft, AlertTriangle, CheckCircle2, Clock, Zap, TrendingUp, TrendingDown } from 'lucide-vue-next'
 import { VisXYContainer, VisArea, VisLine, VisGroupedBar, VisAxis, VisDonut } from '@unovis/vue'
 
 const route = useRoute()
 const router = useRouter()
-const machineId = computed(() => route.params.id)
 
-const machine = ref({
-  id: 1,
-  name: 'CNC Machine 01',
-  type: 'CNC Mill',
-  status: 'running' as const,
-  location: 'Production Floor A',
-  manufacturer: 'HAAS Automation',
-  model: 'VF-2SS',
-  serialNumber: 'SN-2024-001',
-  installDate: 'January 15, 2023',
-  oee: 88.5,
-  availability: 92.3,
-  performance: 95.8,
-  quality: 100,
-  currentJob: 'Part #A-12345',
-  operator: 'Mike Johnson',
-  shift: 'Day Shift (6 AM - 2 PM)',
-})
+const { getMachine } = useLiveSimulation()
+// The router guard guarantees the id exists.
+const machine = computed(() => getMachine(Number(route.params.id))!)
 
-const realtimeMetrics = ref([
-  { label: 'Current Cycle Time', value: '2.5 min', icon: Clock, color: 'text-blue-500', trend: '+5%', trendUp: false },
-  { label: 'Target Cycle Time', value: '2.3 min', icon: Zap, color: 'text-green-500', trend: '-2%', trendUp: true },
-  { label: 'Parts Produced Today', value: '247', icon: CheckCircle2, color: 'text-emerald-500', trend: '+12%', trendUp: true },
-  { label: 'Active Alerts', value: '2', icon: AlertTriangle, color: 'text-amber-500', trend: '0', trendUp: false },
+const TARGET_CYCLE_MIN = 2.3
+const realtimeMetrics = computed(() => [
+  {
+    label: 'Current Cycle Time',
+    value: machine.value.performance > 0 ? `${(TARGET_CYCLE_MIN / (machine.value.performance / 100)).toFixed(2)} min` : '—',
+    icon: Clock, color: 'text-chart-3', trend: '+5%', trendUp: false,
+  },
+  { label: 'Target Cycle Time', value: `${TARGET_CYCLE_MIN} min`, icon: Zap, color: 'text-success', trend: '-2%', trendUp: true },
+  { label: 'Parts Produced Today', value: String(machine.value.partsToday), icon: CheckCircle2, color: 'text-success', trend: '+12%', trendUp: true },
+  { label: 'Active Alerts', value: machine.value.status === 'running' ? '0' : '1', icon: AlertTriangle, color: 'text-warning', trend: '0', trendUp: false },
 ])
 
 // Performance data for the last 7 days
@@ -63,19 +51,19 @@ const performanceData = ref([
 const performanceChartConfig = {
   oee: {
     label: 'OEE',
-    color: 'hsl(var(--chart-1))',
+    color: 'var(--chart-1)',
   },
   availability: {
     label: 'Availability',
-    color: 'hsl(var(--chart-2))',
+    color: 'var(--chart-2)',
   },
   performance: {
     label: 'Performance',
-    color: 'hsl(var(--chart-3))',
+    color: 'var(--chart-3)',
   },
   quality: {
     label: 'Quality',
-    color: 'hsl(var(--chart-4))',
+    color: 'var(--chart-4)',
   },
 } satisfies ChartConfig
 
@@ -98,21 +86,21 @@ const hourlyProduction = ref([
 const productionChartConfig = {
   parts: {
     label: 'Actual Parts',
-    color: 'hsl(var(--chart-1))',
+    color: 'var(--chart-1)',
   },
   target: {
     label: 'Target',
-    color: 'hsl(var(--chart-2))',
+    color: 'var(--chart-2)',
   },
 } satisfies ChartConfig
 
 // Downtime reasons breakdown
 const downtimeReasons = ref([
-  { reason: 'Setup/Changeover', minutes: 45, fill: 'hsl(0, 84%, 60%)' },
-  { reason: 'Material Shortage', minutes: 30, fill: 'hsl(25, 95%, 53%)' },
-  { reason: 'Tool Change', minutes: 25, fill: 'hsl(48, 96%, 53%)' },
-  { reason: 'Quality Check', minutes: 20, fill: 'hsl(142, 76%, 36%)' },
-  { reason: 'Other', minutes: 10, fill: 'hsl(var(--muted))' },
+  { reason: 'Setup/Changeover', minutes: 45, fill: 'var(--danger)' },
+  { reason: 'Material Shortage', minutes: 30, fill: 'var(--status-planned)' },
+  { reason: 'Tool Change', minutes: 25, fill: 'var(--warning)' },
+  { reason: 'Quality Check', minutes: 20, fill: 'var(--success)' },
+  { reason: 'Other', minutes: 10, fill: 'var(--muted-foreground)' },
 ])
 
 const downtimeChartConfig = {
@@ -121,43 +109,42 @@ const downtimeChartConfig = {
   },
   'Setup/Changeover': {
     label: 'Setup/Changeover',
-    color: 'hsl(var(--chart-1))',
+    color: 'var(--chart-1)',
   },
   'Material Shortage': {
     label: 'Material Shortage',
-    color: 'hsl(var(--chart-2))',
+    color: 'var(--chart-2)',
   },
   'Tool Change': {
     label: 'Tool Change',
-    color: 'hsl(var(--chart-3))',
+    color: 'var(--chart-3)',
   },
   'Quality Check': {
     label: 'Quality Check',
-    color: 'hsl(var(--chart-4))',
+    color: 'var(--chart-4)',
   },
   'Other': {
     label: 'Other',
-    color: 'hsl(var(--chart-5))',
+    color: 'var(--chart-5)',
   },
 } satisfies ChartConfig
 
 // OEE Trend over time - use Date objects for x-axis
-const oeeTrendData = ref([
-  { time: new Date('2024-03-15T06:00:00'), oee: 82 },
-  { time: new Date('2024-03-15T07:00:00'), oee: 85 },
-  { time: new Date('2024-03-15T08:00:00'), oee: 87 },
-  { time: new Date('2024-03-15T09:00:00'), oee: 89 },
-  { time: new Date('2024-03-15T10:00:00'), oee: 88 },
-  { time: new Date('2024-03-15T11:00:00'), oee: 90 },
-  { time: new Date('2024-03-15T12:00:00'), oee: 88 },
-  { time: new Date('2024-03-15T13:00:00'), oee: 86 },
-  { time: new Date('2024-03-15T14:00:00'), oee: 89 },
-])
+const oeeTrendData = computed(() => machine.value.history.map((h) => ({ time: new Date(h.t), oee: h.oee })))
+
+const trendDomain = computed<[number, number]>(() => {
+  const values = oeeTrendData.value.map((d) => d.oee)
+  if (!values.length) return [0, 100]
+  return [Math.max(0, Math.floor(Math.min(...values)) - 3), Math.min(100, Math.ceil(Math.max(...values)) + 3)]
+})
+
+const trendTickFormat = (i: number) =>
+  oeeTrendData.value[Math.round(i)]?.time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) ?? ''
 
 const oeeTrendConfig = {
   oee: {
     label: 'OEE %',
-    color: 'hsl(var(--chart-1))',
+    color: 'var(--chart-1)',
   },
 } satisfies ChartConfig
 
@@ -182,19 +169,19 @@ const goBack = () => {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'running': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-    case 'idle': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-    case 'offline': return 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
-    default: return 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+    case 'running': return 'border-status-running/40 bg-status-running/15 text-foreground'
+    case 'idle': return 'border-status-idle/40 bg-status-idle/15 text-foreground'
+    case 'offline': return 'border-status-offline/40 bg-status-offline/15 text-foreground'
+    default: return 'bg-muted text-muted-foreground'
   }
 }
 
 const getEventTypeColor = (type: string) => {
   switch (type) {
-    case 'success': return 'bg-emerald-500'
-    case 'warning': return 'bg-amber-500'
-    case 'error': return 'bg-rose-500'
-    default: return 'bg-blue-500'
+    case 'success': return 'bg-success'
+    case 'warning': return 'bg-warning'
+    case 'error': return 'bg-danger'
+    default: return 'bg-status-planned'
   }
 }
 
@@ -218,7 +205,7 @@ type HourlyProductionData = (typeof hourlyProduction.value)[number]
           <p class="text-muted-foreground">{{ machine.type }}</p>
         </div>
         <Badge :class="getStatusColor(machine.status)">
-          {{ machine.status.toUpperCase() }}
+          {{ MACHINE_STATUS[machine.status].label.toUpperCase() }}
         </Badge>
         <Button variant="outline">Export Report</Button>
         <Button>Schedule Maintenance</Button>
@@ -235,8 +222,8 @@ type HourlyProductionData = (typeof hourlyProduction.value)[number]
             <div class="text-2xl font-bold">{{ metric.value }}</div>
             <div class="flex items-center gap-1 mt-1">
               <component :is="metric.trendUp ? TrendingUp : TrendingDown"
-                :class="['h-3 w-3', metric.trendUp ? 'text-green-500' : 'text-red-500']" />
-              <span :class="['text-xs', metric.trendUp ? 'text-green-500' : 'text-red-500']">
+                :class="['h-3 w-3', metric.trendUp ? 'text-success' : 'text-danger']" />
+              <span :class="['text-xs', metric.trendUp ? 'text-success' : 'text-danger']">
                 {{ metric.trend }}
               </span>
               <span class="text-xs text-muted-foreground">from yesterday</span>
@@ -348,21 +335,21 @@ type HourlyProductionData = (typeof hourlyProduction.value)[number]
                     <span class="text-sm font-medium">Availability</span>
                     <span class="text-sm font-bold">{{ machine.availability }}%</span>
                   </div>
-                  <Progress :model-value="machine.availability" class="h-3 [&>div]:bg-blue-500" />
+                  <Progress :model-value="machine.availability" class="h-3 [&>div]:bg-chart-2" />
                 </div>
                 <div>
                   <div class="flex items-center justify-between mb-2">
                     <span class="text-sm font-medium">Performance</span>
                     <span class="text-sm font-bold">{{ machine.performance }}%</span>
                   </div>
-                  <Progress :model-value="machine.performance" class="h-3 [&>div]:bg-purple-500" />
+                  <Progress :model-value="machine.performance" class="h-3 [&>div]:bg-chart-3" />
                 </div>
                 <div>
                   <div class="flex items-center justify-between mb-2">
                     <span class="text-sm font-medium">Quality</span>
                     <span class="text-sm font-bold">{{ machine.quality }}%</span>
                   </div>
-                  <Progress :model-value="machine.quality" class="h-3 [&>div]:bg-green-500" />
+                  <Progress :model-value="machine.quality" class="h-3 [&>div]:bg-chart-4" />
                 </div>
               </div>
             </CardContent>
@@ -376,12 +363,13 @@ type HourlyProductionData = (typeof hourlyProduction.value)[number]
             </CardHeader>
             <CardContent>
               <ChartContainer :config="oeeTrendConfig" class="h-[300px] w-full">
-                <VisXYContainer :data="oeeTrendData" :height="300">
-                  <VisAxis type="x" :numTicks="5" label="Time" />
+                <VisXYContainer :data="oeeTrendData" :height="300" :yDomain="trendDomain">
+                  <VisAxis type="x" :numTicks="5" :tickFormat="trendTickFormat" label="Time" />
                   <VisAxis type="y" label="OEE %" />
                   <VisArea
                     :x="(_: OeeTrendData, i: number) => i"
                     :y="(d: OeeTrendData) => d.oee"
+                    :baseline="() => trendDomain[0]"
                     :color="oeeTrendConfig.oee.color"
                   />
                   <ChartTooltip>
@@ -570,8 +558,8 @@ type HourlyProductionData = (typeof hourlyProduction.value)[number]
                           <div class="mt-1 pt-1 border-t">
                             <div class="flex items-center justify-between">
                               <span class="text-xs text-muted-foreground">Achievement</span>
-                              <span class="text-xs font-bold" :class="hourlyProduction[data[0].index] && hourlyProduction[data[0].index].parts >= hourlyProduction[data[0].index].target ? 'text-green-500' : 'text-amber-500'">
-                                {{ hourlyProduction[data[0].index] ? Math.round((hourlyProduction[data[0].index].parts / hourlyProduction[data[0].index].target) * 100) : 0 }}%
+                              <span class="text-xs font-bold" :class="(hourlyProduction[data[0].index]?.parts ?? 0) >= (hourlyProduction[data[0].index]?.target ?? 1) ? 'text-success' : 'text-warning'">
+                                {{ hourlyProduction[data[0].index] ? Math.round(((hourlyProduction[data[0].index]?.parts ?? 0) / (hourlyProduction[data[0].index]?.target ?? 1)) * 100) : 0 }}%
                               </span>
                             </div>
                           </div>
@@ -618,16 +606,16 @@ type HourlyProductionData = (typeof hourlyProduction.value)[number]
                           <div v-if="data && data.length > 0 && downtimeReasons[data[0].index]" class="rounded-lg border bg-background p-2 shadow-sm">
                             <div class="grid gap-2">
                               <div class="flex items-center gap-2">
-                                <div class="h-2.5 w-2.5 rounded-full" :style="{ backgroundColor: downtimeReasons[data[0].index].fill }" />
-                                <span class="text-sm font-medium">{{ downtimeReasons[data[0].index].reason }}</span>
+                                <div class="h-2.5 w-2.5 rounded-full" :style="{ backgroundColor: downtimeReasons[data[0].index]?.fill }" />
+                                <span class="text-sm font-medium">{{ downtimeReasons[data[0].index]?.reason }}</span>
                               </div>
                               <div class="flex items-center justify-between">
                                 <span class="text-xs text-muted-foreground">Duration</span>
-                                <span class="font-mono font-bold">{{ downtimeReasons[data[0].index].minutes }} min</span>
+                                <span class="font-mono font-bold">{{ downtimeReasons[data[0].index]?.minutes }} min</span>
                               </div>
                               <div class="flex items-center justify-between">
                                 <span class="text-xs text-muted-foreground">Percentage</span>
-                                <span class="font-mono font-bold">{{ Math.round((downtimeReasons[data[0].index].minutes / totalDowntime) * 100) }}%</span>
+                                <span class="font-mono font-bold">{{ Math.round(((downtimeReasons[data[0].index]?.minutes ?? 0) / totalDowntime) * 100) }}%</span>
                               </div>
                             </div>
                           </div>
